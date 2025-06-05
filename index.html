@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrevista Florescendo Talentos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Chosen Palette: Florescendo Talentos (Baseado no Banner: Creme, Laranja, Verde, Azul Escuro) -->
+    <!-- Application Structure Plan: A digital, interactive form designed as an accordion. Each section of the interview is a collapsible item. The core interactions are typing notes into text areas, generating a consolidated summary (with student answers highlighted in blue text), and saving that summary as a PDF. The UI is now themed to match the "Florescendo Talentos" project branding. -->
+    <!-- Visualization & Content Choices: The source material is a questionnaire. The application uses interactive form elements. Info: Interview Questions -> Goal: Guide interviewer and capture qualitative responses -> Presentation: HTML Accordion with styled text and textarea inputs, themed with project colors. Student answers are highlighted. -> Interaction: Click to expand/collapse sections, type notes, click a button to generate a formatted summary, click another button to save summary as PDF. -> Justification: Enhances usability and aligns the tool's visual identity with the project. -> Library/Method: Vanilla JS for interactions, Tailwind CSS for styling, jsPDF for PDF generation. No charts needed. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #FFFBF0; } /* Creme Fundo */
+        .header-title { font-family: 'Poppins', sans-serif; }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .accordion-item.active .accordion-content { max-height: 1000px; }
+        .accordion-item.active .chevron { transform: rotate(180deg); }
+        .chevron { transition: transform 0.3s ease-out; }
+        .summary-box { white-space: pre-wrap; word-wrap: break-word; }
+        .student-answer-text { color: #1d4ed8; } /* Azul para respostas (text-blue-700) */
+
+        /* Elementos inspirados nas 'trilhas' do banner */
+        .trail-element-orange { background-color: #FF6B00; height: 4px; border-radius: 2px; }
+        .trail-element-green { background-color: #00A550; height: 4px; border-radius: 2px; }
+        .trail-element-blue { background-color: #0D2C54; height: 4px; border-radius: 2px; }
+    </style>
+</head>
+<body class="text-stone-800">
+
+    <div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
+
+        <header class="text-center mb-10 pt-4">
+            <div class="flex justify-center items-center space-x-2 mb-2">
+                <div class="trail-element-orange w-16"></div>
+                <div class="trail-element-green w-12"></div>
+                <div class="trail-element-blue w-16"></div>
+            </div>
+            <h1 class="header-title text-4xl md:text-5xl font-bold text-[#0D2C54]"> PFT - 
+                <span class="text-[#FF6B00]">FLORES</span><span class="text-[#00A550]">CENDO</span> TALENTOS
+            </h1>
+            <p class="header-title text-lg font-semibold text-[#0D2C54] -mt-1">BY CESAR</p>
+            <p class="mt-3 text-xl text-stone-700">Ferramenta de Entrevista com Estudante</p>
+             <div class="flex justify-center items-center space-x-2 mt-3">
+                <img src="https://placehold.co/80x30/FFFFFF/0D2C54?text=C.E.S.A.R" alt="Logo CESAR" class="h-6 md:h-8" onerror="this.style.display='none'">
+                <img src="https://placehold.co/100x30/FFFFFF/00A550?text=Trilhatec+PE" alt="Logo Trilhatec PE" class="h-6 md:h-8" onerror="this.style.display='none'">
+            </div>
+        </header>
+
+        <div class="bg-white p-6 rounded-2xl shadow-xl mb-8 border-2 border-[#FF6B00]">
+            <h2 class="text-xl font-bold mb-4 text-[#0D2C54]">Informações do Aluno</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="studentName" class="block text-sm font-medium text-stone-700 mb-1">Nome Completo do Aluno</label>
+                    <input type="text" id="studentName" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] transition">
+                </div>
+                <div>
+                    <label for="studentClass" class="block text-sm font-medium text-stone-700 mb-1">Turma</label>
+                    <input type="text" id="studentClass" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] transition">
+                </div>
+            </div>
+        </div>
+
+        <div id="accordion-container" class="space-y-4">
+        </div>
+
+        <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+            <button id="generateSummaryBtn" class="w-full sm:w-auto bg-[#FF6B00] text-white font-bold py-3 px-8 rounded-lg hover:bg-[#E05A00] transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                Gerar Resumo
+            </button>
+            <button id="savePdfBtn" class="w-full sm:w-auto bg-[#00A550] text-white font-bold py-3 px-8 rounded-lg hover:bg-[#008440] transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 hidden">
+                Salvar PDF
+            </button>
+            <button id="clearFormBtn" class="w-full sm:w-auto bg-stone-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-stone-600 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                Limpar
+            </button>
+        </div>
+
+        <div id="summaryOutput" class="hidden mt-10 bg-white p-6 rounded-2xl shadow-xl border-2 border-[#00A550]">
+            <h2 class="header-title text-2xl font-bold mb-4 text-[#0D2C54]">Resumo da Entrevista</h2>
+            <p class="mb-4 text-stone-600">Copie o texto abaixo ou clique em "Salvar PDF". As respostas do aluno estão destacadas em <span class="student-answer-text font-semibold">azul</span>.</p>
+            <div id="summaryContent" class="summary-box bg-stone-50 p-4 rounded-lg text-sm text-stone-700 border border-stone-200"></div>
+        </div>
+         <div id="pdfMessage" class="hidden mt-4 text-center text-sm p-3 rounded-md"></div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const { jsPDF } = window.jspdf;
+
+            const interviewData = [
+                 {
+                    block: 'Bloco 1: Descoberta e Primeiras Impressões com Programação e o PFT',
+                    questions: [
+                        'Antes de entrar no Projeto Florescendo Talentos, você já tinha tido algum contato ou interesse por programação ou tecnologia? Se sim, qual?',
+                        'O que te motivou a participar do Projeto Florescendo Talentos, especificamente no módulo de lógica de programação com Python?',
+                        'Qual foi sua primeira impressão ao começar a aprender lógica de programação e a linguagem Python? Foi o que você esperava?',
+                        'Você se lembra de algum conceito inicial em lógica de programação ou Python que achou particularmente desafiador ou, ao contrário, que "clicou" rapidamente para você?',
+                    ]
+                },
+                {
+                    block: 'Bloco 2: Experiência de Aprendizado no Módulo de Lógica com Python',
+                    questions: [
+                        'Como tem sido sua experiência aprendendo lógica de programação com Python no PFT? O que mais te agrada na forma como o conteúdo é ensinado?',
+                        'Houve algum projeto ou exercício específico neste módulo que você achou especialmente interessante, desafiador ou gratificante de completar? Por quê?',
+                        'Quais foram os maiores desafios que você enfrentou ao aprender lógica de programação e Python? Como você os superou (ou está superando)?',
+                        'Você buscou ajuda dos tutores, colegas ou outros recursos quando teve dificuldades? Como foi essa experiência?',
+                        'Tem algum "momento eureca" ou uma descoberta que você fez durante o aprendizado de Python que te deixou animado(a) ou orgulhoso(a)?',
+                    ]
+                },
+                {
+                    block: 'Bloco 3: Impacto do Aprendizado e Desenvolvimento de Habilidades',
+                    questions: [
+                        'De que forma aprender lógica de programação e Python até agora mudou sua maneira de pensar ou resolver problemas, mesmo fora do contexto da programação?',
+                        'Quais habilidades você sente que desenvolveu ou aprimorou participando deste módulo do PFT (além de programar em Python)?',
+                        'Você já conseguiu aplicar algo que aprendeu sobre lógica de programação ou Python em alguma outra área da sua vida, nos estudos ou em algum projeto pessoal?',
+                        'Como você descreveria a sensação de conseguir fazer um código funcionar e resolver um problema usando Python?',
+                    ]
+                },
+                {
+                    block: 'Bloco 4: Inspiração, Futuro e o PFT',
+                    questions: [
+                        'O que mais te inspira ou te motiva a continuar aprendendo programação agora que você teve essa introdução com Python no PFT?',
+                        'Aprender Python no PFT abriu seus olhos para novas possibilidades de carreira ou áreas de estudo que você não considerava antes? Quais?',
+                        'Como você acha que o conhecimento em lógica de programação e Python pode te ajudar a alcançar seus objetivos futuros?',
+                        'Por que você acha que sua experiência no Projeto Florescendo Talentos, aprendendo Python, poderia ser inspiradora para outros jovens que talvez achem que programação é muito difícil ou não é para eles?',
+                    ]
+                },
+                {
+                    block: 'Bloco 5: Sobre o Evento',
+                    questions: [
+                        'A ideia do evento é que alguns alunos compartilhem suas experiências com o PFT e o aprendizado de programação para inspirar outros. Você se sentiria confortável em compartilhar um pouco da sua trajetória com Python em uma transmissão de evento?',
+                        'Há algo em sua experiência no PFT ou com Python que você considera muito pessoal e talvez preferisse não compartilhar publicamente?',
+                    ]
+                }
+            ];
+
+            const accordionContainer = document.getElementById('accordion-container');
+            interviewData.forEach((section, index) => {
+                const item = document.createElement('div');
+                item.className = 'accordion-item bg-white rounded-2xl shadow-lg overflow-hidden border border-stone-200';
+
+                let questionsHtml = '';
+                section.questions.forEach((q, qIndex) => {
+                    questionsHtml += `
+                        <div class="mb-6">
+                            <label for="q-${index}-${qIndex}" class="block text-md font-medium text-stone-700">${q}</label>
+                            <textarea id="q-${index}-${qIndex}" rows="3" class="mt-2 w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] transition" placeholder="Anote aqui os pontos principais..."></textarea>
+                        </div>
+                    `;
+                });
+                // Azul Escuro para o texto do header do accordion: #0D2C54
+                // Laranja para o ícone chevron: #FF6B00
+                item.innerHTML = `
+                    <button class="accordion-header w-full flex justify-between items-center p-5 text-left font-semibold text-lg text-[#0D2C54] hover:bg-stone-50 transition">
+                        <span>${section.block}</span>
+                        <svg class="chevron w-6 h-6 text-[#FF6B00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="p-5 border-t border-stone-200">
+                            ${questionsHtml}
+                        </div>
+                    </div>
+                `;
+                accordionContainer.appendChild(item);
+            });
+            
+            accordionContainer.innerHTML += `
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-stone-200">
+                    <h2 class="text-xl font-bold mb-2 text-[#0D2C54]">Observações Gerais do Entrevistador</h2>
+                    <p class="text-stone-600 mb-4 text-sm">Anote aqui suas impressões sobre a comunicação do aluno, entusiasmo, clareza e potencial de inspiração.</p>
+                    <textarea id="generalObservations" rows="4" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#FF6B00] focus:border-[#FF6B00] transition" placeholder="Observações gerais..."></textarea>
+                </div>
+            `;
+
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const currentActive = document.querySelector('.accordion-item.active');
+                    if (currentActive && currentActive !== header.parentElement) {
+                        currentActive.classList.remove('active');
+                    }
+                    header.parentElement.classList.toggle('active');
+                });
+            });
+            
+            const savePdfBtn = document.getElementById('savePdfBtn');
+            const pdfMessage = document.getElementById('pdfMessage');
+            const summaryContentDiv = document.getElementById('summaryContent');
+
+            document.getElementById('generateSummaryBtn').addEventListener('click', function() {
+                summaryContentDiv.innerHTML = ''; // Limpa conteúdo anterior
+                let htmlSummary = '<h1 style="font-size: 18px; font-weight: bold; color: #0D2C54; text-align: center;">FLORESCENDO TALENTOS BY CESAR</h1>';
+                htmlSummary += '<h2 style="font-size: 14px; color: #555; text-align: center; margin-bottom: 20px;">RESUMO DA ENTREVISTA PFT</h2>';
+
+
+                const studentName = document.getElementById('studentName').value;
+                const studentClass = document.getElementById('studentClass').value;
+
+                htmlSummary += `<p><strong>Nome do Aluno:</strong> ${studentName || 'Não preenchido'}</p>`;
+                htmlSummary += `<p><strong>Turma:</strong> ${studentClass || 'Não preenchida'}</p><br>`;
+                htmlSummary += '<hr style="margin: 10px 0;">';
+
+                interviewData.forEach((section) => {
+                    htmlSummary += `<h3 style="font-size: 14px; font-weight: bold; color: #0D2C54; margin-top: 15px;">${section.block}</h3>`;
+                    section.questions.forEach((q, qIndexOriginal) => {
+                        const qId = `q-${interviewData.indexOf(section)}-${qIndexOriginal}`;
+                        const answer = document.getElementById(qId).value;
+                        htmlSummary += `<p style="margin-top: 8px;"><strong>P:</strong> ${q}</p>`;
+                        htmlSummary += `<p><strong class="student-answer-text">R:</strong> <span class="student-answer-text">${answer.trim() || 'Nenhuma anotação.'}</span></p>`;
+                    });
+                    htmlSummary += '<hr style="margin: 10px 0;">';
+                });
+                
+                const generalObservations = document.getElementById('generalObservations').value;
+                htmlSummary += `<h3 style="font-size: 14px; font-weight: bold; color: #0D2C54; margin-top: 15px;">Observações Gerais do Entrevistador</h3>`;
+                htmlSummary += `<p class="student-answer-text">${generalObservations.trim() || 'Nenhuma observação.'}</p>`;
+
+                summaryContentDiv.innerHTML = htmlSummary;
+                document.getElementById('summaryOutput').classList.remove('hidden');
+                savePdfBtn.classList.remove('hidden');
+                pdfMessage.classList.add('hidden');
+                document.getElementById('summaryOutput').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            savePdfBtn.addEventListener('click', function() {
+                const doc = new jsPDF();
+                let studentName = document.getElementById('studentName').value.trim();
+                
+                if (!studentName) {
+                    studentName = 'Entrevista_Florescendo_Talentos';
+                } else {
+                    studentName = studentName.replace(/[^a-z0-9_-\s]/gi, '').replace(/\s+/g, '_');
+                }
+                const fileName = `${studentName}.pdf`;
+
+                const pageHeight = doc.internal.pageSize.height;
+                const pageWidth = doc.internal.pageSize.width;
+                const margin = 15;
+                let y = margin;
+                const lineHeight = 7;
+                const answerColor = [29, 78, 216]; // Cor RGB para text-blue-700 (#1d4ed8)
+                const questionColor = [0, 0, 0]; // Preto para perguntas
+                const titleColor = [13, 44, 84]; // Azul Escuro #0D2C54 para títulos
+
+                function addTextWithWrap(text, x, currentY, maxWidth, options = {}) {
+                    const lines = doc.splitTextToSize(text, maxWidth);
+                    if (options.color) doc.setTextColor(options.color[0], options.color[1], options.color[2]);
+                    if (options.fontStyle) doc.setFont(undefined, options.fontStyle);
+                    
+                    lines.forEach(line => {
+                        if (currentY + lineHeight > pageHeight - margin) {
+                            doc.addPage();
+                            currentY = margin;
+                        }
+                        doc.text(line, x, currentY);
+                        currentY += lineHeight;
+                    });
+                    doc.setFont(undefined, 'normal'); // Reset font style
+                    doc.setTextColor(questionColor[0], questionColor[1], questionColor[2]); // Reset to default text color
+                    return currentY;
+                }
+                
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                y = addTextWithWrap('FLORESCENDO TALENTOS BY CESAR', pageWidth / 2, y, pageWidth - margin * 2, { color: titleColor, align: 'center' });
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'normal');
+                y = addTextWithWrap('RESUMO DA ENTREVISTA PFT', pageWidth / 2, y, pageWidth - margin * 2, { color: [85, 85, 85], align: 'center'});
+                y += lineHeight;
+
+
+                doc.setFontSize(12);
+                const studentNameValue = document.getElementById('studentName').value;
+                const studentClassValue = document.getElementById('studentClass').value;
+
+                y = addTextWithWrap(`Nome do Aluno: ${studentNameValue || 'Não preenchido'}`, margin, y, pageWidth - margin * 2);
+                y = addTextWithWrap(`Turma: ${studentClassValue || 'Não preenchida'}`, margin, y, pageWidth - margin * 2);
+                y += lineHeight / 2;
+                doc.setDrawColor(200, 200, 200); // Cor da linha
+                doc.line(margin, y, pageWidth - margin, y); // Linha horizontal
+                y += lineHeight;
+
+
+                interviewData.forEach((section) => {
+                    doc.setFontSize(13);
+                    doc.setFont(undefined, 'bold');
+                    y = addTextWithWrap(section.block, margin, y, pageWidth - margin * 2, { color: titleColor });
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'normal');
+                    
+                    section.questions.forEach((q, qIndexOriginal) => {
+                        const qId = `q-${interviewData.indexOf(section)}-${qIndexOriginal}`;
+                        const answer = document.getElementById(qId).value;
+                        y = addTextWithWrap(`P: ${q}`, margin, y, pageWidth - margin * 2);
+                        y = addTextWithWrap(`R: ${answer.trim() || 'Nenhuma anotação.'}`, margin, y, pageWidth - margin * 2, { color: answerColor });
+                        y += lineHeight / 2;
+                    });
+                    doc.line(margin, y, pageWidth - margin, y);
+                    y += lineHeight;
+                });
+                
+                doc.setFontSize(13);
+                doc.setFont(undefined, 'bold');
+                y = addTextWithWrap('Observações Gerais do Entrevistador', margin, y, pageWidth - margin * 2, { color: titleColor });
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'normal');
+                const generalObservations = document.getElementById('generalObservations').value;
+                y = addTextWithWrap(generalObservations.trim() || 'Nenhuma observação.', margin, y, pageWidth - margin * 2, {color: answerColor});
+                
+                doc.save(fileName);
+
+                pdfMessage.innerText = `PDF "${fileName}" salvo com sucesso!`;
+                pdfMessage.className = 'mt-4 text-center text-sm p-3 rounded-md bg-green-100 text-green-700 border border-green-300';
+                pdfMessage.classList.remove('hidden');
+                setTimeout(() => pdfMessage.classList.add('hidden'), 4000);
+            });
+
+            document.getElementById('clearFormBtn').addEventListener('click', function() {
+                document.getElementById('studentName').value = '';
+                document.getElementById('studentClass').value = '';
+                document.querySelectorAll('textarea').forEach(textarea => textarea.value = '');
+                summaryContentDiv.innerHTML = '';
+                document.getElementById('summaryOutput').classList.add('hidden');
+                savePdfBtn.classList.add('hidden');
+                pdfMessage.classList.add('hidden');
+                document.querySelector('.container').scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html>
